@@ -37,10 +37,13 @@ export function splitIntoMessages(text: string): string[] {
   if (merged.length > MAX_BUBBLES) {
     const head = merged.slice(0, MAX_BUBBLES - 1);
     const tail = merged.slice(MAX_BUBBLES - 1).join(" ");
-    return [...head, tail];
+    const capped = [...head, tail];
+    const target = pickTargetBubbleCount(capped.length);
+    return collapseToTarget(capped, target);
   }
 
-  return merged;
+  const target = pickTargetBubbleCount(merged.length);
+  return collapseToTarget(merged, target);
 }
 
 function isShortSingleSentence(text: string): boolean {
@@ -53,4 +56,42 @@ function isShortSingleSentence(text: string): boolean {
 
 function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
+}
+
+function pickTargetBubbleCount(maxAvailable: number): number {
+  if (maxAvailable <= 1) {
+    return 1;
+  }
+  if (maxAvailable === 2) {
+    return Math.random() < 0.45 ? 1 : 2;
+  }
+
+  // For 3+ fragments (already capped to 3), vary naturally:
+  // mostly 2, sometimes 3, occasionally 1.
+  const roll = Math.random();
+  if (roll < 0.2) {
+    return 1;
+  }
+  if (roll < 0.75) {
+    return 2;
+  }
+  return Math.min(3, maxAvailable);
+}
+
+function collapseToTarget(parts: string[], targetCount: number): string[] {
+  if (parts.length <= targetCount) {
+    return parts;
+  }
+
+  const collapsed = [...parts];
+  while (collapsed.length > targetCount) {
+    const right = collapsed.pop();
+    if (!right) {
+      break;
+    }
+    const left = collapsed.pop() ?? "";
+    collapsed.push(`${left} ${right}`.trim());
+  }
+
+  return collapsed;
 }
