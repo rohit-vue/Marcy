@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      LOG_LEVEL: info
+      SUPABASE_URL: ${SUPABASE_URL:?set SUPABASE_URL in .env}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-dev-placeholder-key}

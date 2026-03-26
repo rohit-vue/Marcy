@@ -1,0 +1,21 @@
+import type { Telegraf } from "telegraf";
+
+import type { TypedSupabaseClient } from "../plugins/supabase.js";
+
+declare module "fastify" {
+  interface FastifyInstance {
+    config: {
+      PORT: string;
+      NODE_ENV: string;
+      LOG_LEVEL: string;
+      SUPABASE_URL: string;
+      SUPABASE_ANON_KEY: string;
+      SUPABASE_SERVICE_ROLE_KEY?: string;
+      TELEGRAM_BOT_TOKEN: string;
+      OPENAI_API_KEY: string;
+      REFERENCE_IMAGE_URL: string;
+    };
+    supabase: TypedSupabaseClient;
+    telegraf: Telegraf;
+  }
+}
