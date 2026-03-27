@@ -19,27 +19,6 @@ export const telegramPlugin: FastifyPluginAsync = fp(
     registerTelegramBotHandlers(bot, conversation, app.log);
 
     app.decorate("telegraf", bot);
-
-    app.addHook("onReady", async () => {
-      app.log.info("telegram.bot.launching");
-      void bot
-        .launch()
-        .then(() => {
-          app.log.info("telegram.bot.ready");
-        })
-        .catch((err: unknown) => {
-          app.log.error({ err }, "telegram.bot.launch_failed");
-        });
-    });
-
-    app.addHook("onClose", async () => {
-      app.log.info("telegram.bot.stopping");
-      try {
-        bot.stop("SIGTERM");
-      } catch (err) {
-        app.log.warn({ err }, "telegram.bot.stop_skipped");
-      }
-    });
   },
   {
     name: "telegram",
