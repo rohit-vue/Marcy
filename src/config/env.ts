@@ -36,6 +36,9 @@ export const envSchema = {
       type: "string",
       default: "https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png",
     },
+    WEBHOOK_URL: {
+      type: "string",
+    },
   },
 } as const;
 

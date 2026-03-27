@@ -20,7 +20,24 @@ export const telegramPlugin: FastifyPluginAsync = fp(
 
     app.decorate("telegraf", bot);
 
-    if (app.config.NODE_ENV !== "production") {
+    if (app.config.NODE_ENV === "production" && app.config.WEBHOOK_URL) {
+      const webhookPath = "/api/telegram";
+      const fullUrl = `${app.config.WEBHOOK_URL.replace(/\/+$/, "")}${webhookPath}`;
+
+      app.post(webhookPath, async (request, reply) => {
+        await bot.handleUpdate(request.body as Parameters<typeof bot.handleUpdate>[0]);
+        return reply.status(200).send("OK");
+      });
+
+      app.addHook("onReady", async () => {
+        try {
+          await bot.telegram.setWebhook(fullUrl);
+          app.log.info({ url: fullUrl }, "telegram.webhook.set");
+        } catch (err) {
+          app.log.error({ err }, "telegram.webhook.set_failed");
+        }
+      });
+    } else {
       app.addHook("onReady", async () => {
         app.log.info("telegram.bot.launching_polling_dev");
         void bot

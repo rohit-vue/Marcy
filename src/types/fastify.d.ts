@@ -14,6 +14,7 @@ declare module "fastify" {
       TELEGRAM_BOT_TOKEN: string;
       OPENAI_API_KEY: string;
       REFERENCE_IMAGE_URL: string;
+      WEBHOOK_URL?: string;
     };
     supabase: TypedSupabaseClient;
     telegraf: Telegraf;
