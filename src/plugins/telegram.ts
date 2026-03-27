@@ -19,6 +19,29 @@ export const telegramPlugin: FastifyPluginAsync = fp(
     registerTelegramBotHandlers(bot, conversation, app.log);
 
     app.decorate("telegraf", bot);
+
+    if (app.config.NODE_ENV !== "production") {
+      app.addHook("onReady", async () => {
+        app.log.info("telegram.bot.launching_polling_dev");
+        void bot
+          .launch()
+          .then(() => {
+            app.log.info("telegram.bot.ready_polling_dev");
+          })
+          .catch((err: unknown) => {
+            app.log.error({ err }, "telegram.bot.launch_failed");
+          });
+      });
+
+      app.addHook("onClose", async () => {
+        app.log.info("telegram.bot.stopping_polling_dev");
+        try {
+          bot.stop("SIGTERM");
+        } catch (err) {
+          app.log.warn({ err }, "telegram.bot.stop_skipped");
+        }
+      });
+    }
   },
   {
     name: "telegram",

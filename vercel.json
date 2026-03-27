@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/telegram.ts": {
+      "runtime": "@vercel/node"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/telegram",
+      "destination": "/api/telegram.ts"
+    }
+  ]
+}
