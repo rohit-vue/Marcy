@@ -1,7 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { Context, Telegraf } from "telegraf";
 
-import { detectIntentRegex } from "../ai/intent.service.js";
 import { splitIntoMessages } from "../ai/messageFormatter.js";
 import type { TelegramConversationService } from "./service.js";
 import { startTyping, type TelegramChatAction } from "./typing.service.js";
@@ -26,8 +25,10 @@ export function registerTelegramBotHandlers(
 
     const telegramId = BigInt(from.id);
     const text = ctx.message.text;
-    const predictedIntent = detectIntentRegex(text);
-    const action: TelegramChatAction = predictedIntent.type === "chat" ? "typing" : "upload_photo";
+    const action: TelegramChatAction = await conversation.predictChatAction(text).catch((err: unknown) => {
+      log.warn({ err, telegramUserId: from.id }, "telegram.intent_prediction_failed");
+      return "typing";
+    });
 
     log.info({ telegramUserId: from.id, textLength: text.length }, "telegram.message.text");
 

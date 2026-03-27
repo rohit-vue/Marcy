@@ -19,6 +19,40 @@ export function createAiService(log: FastifyBaseLogger, openAiApiKey: string) {
   const client = new OpenAI({ apiKey: openAiApiKey });
 
   return {
+    async generateImagePreMessage(params: {
+      userMessage: string;
+      mode: "selfie" | "scene";
+    }): Promise<string> {
+      try {
+        const completion = await client.chat.completions.create({
+          model: "gpt-4o-mini",
+          temperature: 0.7,
+          max_tokens: 28,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Write one short in-character line for a girlfriend-style AI companion before sending an image. " +
+                "Playful, warm, natural. No emojis spam. No quotes. No labels. No hashtags.",
+            },
+            {
+              role: "user",
+              content: `User asked: "${params.userMessage}". Image mode: ${params.mode}.`,
+            },
+          ],
+        });
+
+        const text = completion.choices[0]?.message?.content?.trim();
+        if (!text) {
+          return "Give me a sec, I have a little surprise for you.";
+        }
+        return text.replace(/\s+/g, " ").slice(0, 140);
+      } catch (err) {
+        log.warn({ err }, "ai.image_pre_message.failed");
+        return "Give me a sec, I have a little surprise for you.";
+      }
+    },
+
     async generateAssistantReply(params: {
       userMessage: string;
       recent: AiContextMessage[];

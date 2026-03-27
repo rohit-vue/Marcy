@@ -1,7 +1,7 @@
 import type { AIIntentResult } from "./intent.ai.service.js";
 
 export type UserIntent = {
-  type: "selfie" | "reference_image" | "chat";
+  type: "image" | "chat";
 };
 
 export type ImageMode = "selfie" | "scene";
@@ -87,8 +87,8 @@ export async function detectIntent(
     }
 
     return {
-      intent: { type: "selfie" },
-      forcedImageMode: ai.type === "scene" ? "scene" : "selfie",
+      intent: { type: "image" },
+      forcedImageMode: ai.mode ?? "selfie",
       aiType: ai.type,
       confidence: ai.confidence,
       usedFallback: false,
@@ -112,17 +112,14 @@ export function detectIntentRegex(
   const normalized = text.trim();
 
   const asksForImage = isReferenceImageRequest(normalized) || isImplicitSceneRequest(normalized);
-  const hasContext = hasSelfieContextHint(normalized);
+  const hasContext = hasImageContextHint(normalized);
 
-  if (options?.previousIntent === "reference_image" && hasContext) {
-    return { type: "selfie" };
+  if (options?.previousIntent === "image" && hasContext) {
+    return { type: "image" };
   }
 
   if (asksForImage) {
-    if (hasContext) {
-      return { type: "selfie" };
-    }
-    return { type: "reference_image" };
+    return { type: "image" };
   }
 
   return { type: "chat" };
@@ -168,19 +165,4 @@ export function isImplicitSceneRequest(text: string): boolean {
 export function isShortImagePing(text: string): boolean {
   const normalized = text.trim();
   return SHORT_IMAGE_PING_PATTERNS.some((pattern) => pattern.test(normalized));
-}
-
-export type SelfieMode = "mirror" | "direct";
-
-export function detectSelfieMode(text: string): SelfieMode {
-  const mirror = /\b(wearing|outfit|clothes|dress|suit|fashion|full[-\s]?body|mirror)\b/i;
-  const direct = /\b(cafe|restaurant|beach|park|city|portrait|close[-\s]?up|face|smile|eyes)\b/i;
-
-  if (direct.test(text)) {
-    return "direct";
-  }
-  if (mirror.test(text)) {
-    return "mirror";
-  }
-  return "mirror";
 }

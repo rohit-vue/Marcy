@@ -21,7 +21,7 @@ export function createTelegramConversationService(deps: {
   openAiApiKey: string;
   referenceImageUrl?: string;
 }) {
-  const lastIntentByUser = new Map<string, "chat" | "reference_image" | "selfie">();
+  const lastIntentByUser = new Map<string, "chat" | "image">();
   const selfieContextStateByUser = new Map<string, SelfieContextState>();
   const moodByUser = new Map<string, MoodState>();
 
@@ -39,6 +39,11 @@ export function createTelegramConversationService(deps: {
   });
 
   return {
+    async predictChatAction(text: string): Promise<"typing" | "upload_photo"> {
+      const decision = await detectIntent(text, { aiDetector: intentAI.detectIntentAI });
+      return decision.intent.type === "chat" ? "typing" : "upload_photo";
+    },
+
     async handleTextMessage(input: {
       telegramId: bigint;
       text: string;
@@ -96,6 +101,12 @@ export function createTelegramConversationService(deps: {
       const runImageFlow = async (prompt: string, forcedMode?: "selfie" | "scene"): Promise<void> => {
         try {
           const mode = forcedMode ?? detectImageMode(prompt);
+          const preMessage = await ai.generateImagePreMessage({
+            userMessage: trimmed,
+            mode,
+          });
+          await input.reply(preMessage);
+
           const imageOut = await image.generateAndStoreImage({
             userId: dbUser.id,
             userText: prompt,
@@ -115,7 +126,7 @@ export function createTelegramConversationService(deps: {
             role: ChatRole.assistant,
             content: imageOut.caption,
           });
-          lastIntentByUser.set(dbUser.id, "selfie");
+          lastIntentByUser.set(dbUser.id, "image");
           selfieContextStateByUser.set(dbUser.id, "none");
         } catch (err) {
           deps.log.error({ err, userId: dbUser.id }, "selfie.flow.failed");
@@ -135,7 +146,7 @@ export function createTelegramConversationService(deps: {
         return;
       }
 
-      if (intent.type === "reference_image") {
+      if (intent.type === "image") {
         const askForContext = selfieContextState === "none" && isShortImagePing(trimmed) && Math.random() < 0.7;
         if (askForContext) {
           const flirtyPrompt = generateFlirtyPromptResponse(trimmed);
@@ -149,17 +160,12 @@ export function createTelegramConversationService(deps: {
             embedding: assistantEmbedding,
           });
 
-          lastIntentByUser.set(dbUser.id, "reference_image");
+          lastIntentByUser.set(dbUser.id, "image");
           selfieContextStateByUser.set(dbUser.id, "asked_once");
           return;
         }
 
         await runImageFlow(DEFAULT_SELFIE_CONTEXT, decision.forcedImageMode);
-        return;
-      }
-
-      if (intent.type === "selfie") {
-        await runImageFlow(trimmed, decision.forcedImageMode);
         return;
       }
 
