@@ -1,13 +1,11 @@
 import type { FastifyBaseLogger } from "fastify";
-import type { Context, Telegraf } from "telegraf";
+import type { Telegraf } from "telegraf";
 
-import { splitIntoMessages } from "../ai/messageFormatter.js";
-import type { TelegramConversationService } from "./service.js";
-import { startTyping, type TelegramChatAction } from "./typing.service.js";
+import type { MessageJobPayload } from "../queue/types.js";
 
 export function registerTelegramBotHandlers(
   bot: Telegraf,
-  conversation: TelegramConversationService,
+  enqueueMessage: (payload: MessageJobPayload) => Promise<void>,
   log: FastifyBaseLogger,
 ): void {
   bot.command("start", async (ctx) => {
@@ -23,85 +21,20 @@ export function registerTelegramBotHandlers(
       return;
     }
 
-    const telegramId = BigInt(from.id);
-    const text = ctx.message.text;
-    const action: TelegramChatAction = await conversation.predictChatAction(text).catch((err: unknown) => {
-      log.warn({ err, telegramUserId: from.id }, "telegram.intent_prediction_failed");
-      return "typing";
-    });
+    log.info({ telegramUserId: from.id, textLength: ctx.message.text.length }, "telegram.message.text");
 
-    log.info({ telegramUserId: from.id, textLength: text.length }, "telegram.message.text");
-
-    await ctx.sendChatAction(action).catch(() => undefined);
-    const stopTyping = startTyping(ctx, action);
+    await ctx.sendChatAction("typing").catch(() => undefined);
 
     try {
-      await conversation.handleTextMessage({
-        telegramId,
-        text,
-        reply: async (replyText) => {
-          await sendReplyBubbles(ctx, replyText);
-        },
-        replyPhoto: async (photoUrl, caption) => {
-          const maxAttempts = 3;
-          let lastErr: unknown;
-
-          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            try {
-              await ctx.replyWithPhoto(photoUrl, { caption });
-              return;
-            } catch (err) {
-              lastErr = err;
-              log.warn(
-                { err, attempt, maxAttempts, telegramUserId: from.id },
-                "telegram.send_photo.retry",
-              );
-              if (attempt < maxAttempts) {
-                await delayMs(400 * attempt);
-              }
-            }
-          }
-
-          log.error({ err: lastErr, telegramUserId: from.id }, "telegram.send_photo.failed");
-          await ctx.reply(`${caption}\n\n${photoUrl}`);
-        },
+      await enqueueMessage({
+        chatId: ctx.chat.id,
+        telegramId: String(from.id),
+        text: ctx.message.text,
+        messageId: ctx.message.message_id,
       });
     } catch (err) {
-      log.error({ err, telegramUserId: from.id }, "telegram.message.handler_failed");
+      log.error({ err, telegramUserId: from.id }, "telegram.enqueue.failed");
       await ctx.reply("Oops, I glitched for a sec. Try that one more time? 💕");
-    } finally {
-      stopTyping();
     }
   });
-}
-
-function delayMs(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function sendReplyBubbles(
-  ctx: Context,
-  fullText: string,
-): Promise<void> {
-  const parts = splitIntoMessages(fullText);
-  if (parts.length <= 1) {
-    await ctx.reply(fullText);
-    return;
-  }
-
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i] ?? "";
-    const actionDelay = getHumanDelay(part);
-    await ctx.sendChatAction("typing").catch(() => undefined);
-    await delayMs(actionDelay);
-    await ctx.reply(part);
-  }
-}
-
-function getHumanDelay(text: string): number {
-  const base = 100 + Math.floor(Math.random() * 101);
-  const emotionalPause = /\.\.\.|—|…/.test(text) ? 120 : 0;
-  return base + emotionalPause;
 }

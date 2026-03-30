@@ -15,6 +15,7 @@ declare module "fastify" {
       OPENAI_API_KEY: string;
       REFERENCE_IMAGE_URL: string;
       WEBHOOK_URL?: string;
+      REDIS_URL?: string;
     };
     supabase: TypedSupabaseClient;
     telegraf: Telegraf;

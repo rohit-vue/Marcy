@@ -49,6 +49,7 @@ export function createTelegramConversationService(deps: {
       text: string;
       reply: (text: string) => Promise<unknown>;
       replyPhoto: (photoUrl: string, caption: string) => Promise<unknown>;
+      onActionChange?: (action: "typing" | "upload_photo") => void;
     }): Promise<void> {
       const trimmed = input.text.trim();
       if (trimmed.length === 0) {
@@ -100,6 +101,7 @@ export function createTelegramConversationService(deps: {
 
       const runImageFlow = async (prompt: string, forcedMode?: "selfie" | "scene"): Promise<void> => {
         try {
+          input.onActionChange?.("upload_photo");
           const mode = forcedMode ?? detectImageMode(prompt);
           const preMessage = await ai.generateImagePreMessage({
             userMessage: trimmed,

@@ -39,6 +39,9 @@ export const envSchema = {
     WEBHOOK_URL: {
       type: "string",
     },
+    REDIS_URL: {
+      type: "string",
+    },
   },
 } as const;
 

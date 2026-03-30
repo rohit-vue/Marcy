@@ -2,6 +2,9 @@ import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import { Telegraf } from "telegraf";
 
+import { createMessageProcessor } from "../modules/queue/processor.js";
+import { createQueueService } from "../modules/queue/queue.service.js";
+import type { MessageJobPayload } from "../modules/queue/types.js";
 import { registerTelegramBotHandlers } from "../modules/telegram/controller.js";
 import { createTelegramConversationService } from "../modules/telegram/service.js";
 
@@ -16,7 +19,37 @@ export const telegramPlugin: FastifyPluginAsync = fp(
       referenceImageUrl: app.config.REFERENCE_IMAGE_URL,
     });
 
-    registerTelegramBotHandlers(bot, conversation, app.log);
+    const processor = createMessageProcessor({
+      bot,
+      conversation,
+      log: app.log,
+    });
+
+    let enqueueMessage: (payload: MessageJobPayload) => Promise<void>;
+
+    if (app.config.REDIS_URL) {
+      const queueService = createQueueService({
+        redisUrl: app.config.REDIS_URL,
+        processor,
+        log: app.log,
+      });
+
+      enqueueMessage = (payload) => queueService.addMessage(payload);
+
+      app.addHook("onClose", async () => {
+        await queueService.shutdown();
+      });
+
+      app.log.info("telegram.queue_mode.enabled");
+    } else {
+      enqueueMessage = async (payload) => {
+        void processor(payload);
+      };
+
+      app.log.info("telegram.direct_mode.enabled");
+    }
+
+    registerTelegramBotHandlers(bot, enqueueMessage, app.log);
 
     app.decorate("telegraf", bot);
 
