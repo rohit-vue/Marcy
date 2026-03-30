@@ -147,7 +147,8 @@ export function createTelegramConversationService(deps: {
       }
 
       if (intent.type === "image") {
-        const askForContext = selfieContextState === "none" && isShortImagePing(trimmed) && Math.random() < 0.7;
+        const isBarePing = isShortImagePing(trimmed);
+        const askForContext = selfieContextState === "none" && isBarePing && Math.random() < 0.7;
         if (askForContext) {
           const flirtyPrompt = generateFlirtyPromptResponse(trimmed);
           await input.reply(flirtyPrompt);
@@ -165,7 +166,8 @@ export function createTelegramConversationService(deps: {
           return;
         }
 
-        await runImageFlow(DEFAULT_SELFIE_CONTEXT, decision.forcedImageMode);
+        const prompt = isBarePing ? DEFAULT_SELFIE_CONTEXT : trimmed;
+        await runImageFlow(prompt, decision.forcedImageMode);
         return;
       }
 
