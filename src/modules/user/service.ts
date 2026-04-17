@@ -5,7 +5,7 @@ import type { User } from "../../types/database.js";
 import { assertSupabaseNoError, assertSupabaseSingle } from "../../utils/supabase-result.js";
 import { rowToUser } from "../../utils/mappers.js";
 
-const DEFAULT_CREDITS = 10;
+const DEFAULT_CREDITS = 20;
 
 export type UserService = ReturnType<typeof createUserService>;
 

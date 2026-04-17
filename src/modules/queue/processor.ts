@@ -9,6 +9,7 @@ export function createMessageProcessor(deps: {
   bot: Telegraf;
   conversation: TelegramConversationService;
   log: FastifyBaseLogger;
+  appBaseUrl: string;
 }) {
   const activeUsers = new Set<string>();
 
@@ -31,6 +32,8 @@ export function createMessageProcessor(deps: {
         reply: (replyText) => sendReplyBubbles(deps.bot, chatId, replyText),
         replyPhoto: (photoUrl, caption) =>
           sendPhotoWithRetry(deps.bot, deps.log, chatId, photoUrl, caption),
+        replyPaywall: (paywallText) =>
+          sendPaywall(deps.bot, chatId, paywallText, telegramId, deps.appBaseUrl),
         onActionChange: (action) => {
           typingState.action = action;
           void deps.bot.telegram.sendChatAction(chatId, action).catch(() => {});
@@ -114,6 +117,25 @@ async function sendPhotoWithRetry(
 
   log.error({ err: lastErr, chatId }, "processor.send_photo.failed");
   await bot.telegram.sendMessage(chatId, `${caption}\n\n${photoUrl}`);
+}
+
+async function sendPaywall(
+  bot: Telegraf,
+  chatId: number,
+  text: string,
+  telegramId: string,
+  appBaseUrl: string,
+): Promise<void> {
+  const buyPageUrl = `${appBaseUrl.replace(/\/+$/, "")}/buy?tid=${telegramId}`;
+
+  await bot.telegram.sendMessage(chatId, text, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "💖 Stay With Me", url: buyPageUrl }],
+        [{ text: "Maybe later…", callback_data: "paywall_dismiss" }],
+      ],
+    },
+  });
 }
 
 function delay(ms: number): Promise<void> {

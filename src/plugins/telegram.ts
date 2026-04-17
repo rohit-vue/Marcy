@@ -19,10 +19,13 @@ export const telegramPlugin: FastifyPluginAsync = fp(
       referenceImageUrl: app.config.REFERENCE_IMAGE_URL,
     });
 
+    const appBaseUrl = app.config.WEBHOOK_URL ?? `http://localhost:${app.config.PORT}`;
+
     const processor = createMessageProcessor({
       bot,
       conversation,
       log: app.log,
+      appBaseUrl,
     });
 
     let enqueueMessage: (payload: MessageJobPayload) => Promise<void>;
@@ -49,7 +52,7 @@ export const telegramPlugin: FastifyPluginAsync = fp(
       app.log.info("telegram.direct_mode.enabled");
     }
 
-    registerTelegramBotHandlers(bot, enqueueMessage, app.log);
+    registerTelegramBotHandlers(bot, enqueueMessage, app.log, conversation);
 
     app.decorate("telegraf", bot);
 

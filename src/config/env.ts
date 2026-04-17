@@ -42,6 +42,15 @@ export const envSchema = {
     REDIS_URL: {
       type: "string",
     },
+    STRIPE_SECRET_KEY: {
+      type: "string",
+    },
+    STRIPE_WEBHOOK_SECRET: {
+      type: "string",
+    },
+    BOT_USERNAME: {
+      type: "string",
+    },
   },
 } as const;
 
