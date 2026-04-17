@@ -98,6 +98,21 @@ export type Database = {
           },
         ];
       };
+      stripe_events: {
+        Row: {
+          id: string;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -124,6 +139,13 @@ export type Database = {
           success: boolean;
           credits_left: number | null;
         }>;
+      };
+      add_user_credits: {
+        Args: {
+          p_user_id: string;
+          p_amount: number;
+        };
+        Returns: number;
       };
     };
     Enums: Record<string, never>;

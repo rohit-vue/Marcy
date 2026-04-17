@@ -9,6 +9,8 @@ import { buildFastifyLoggerOptions, requestLoggingPlugin } from "./plugins/logge
 import { supabasePlugin } from "./plugins/supabase.js";
 import { telegramPlugin } from "./plugins/telegram.js";
 import { healthRoutes } from "./routes/health.js";
+import { buyRoutes } from "./routes/buy.js";
+import { stripeWebhookRoutes } from "./routes/stripe-webhook.js";
 import { isAppError } from "./utils/errors.js";
 
 export async function buildApp(): Promise<ReturnType<typeof Fastify>> {
@@ -39,6 +41,8 @@ export async function buildApp(): Promise<ReturnType<typeof Fastify>> {
   await app.register(requestLoggingPlugin);
   await app.register(supabasePlugin);
   await app.register(healthRoutes);
+  await app.register(buyRoutes);
+  await app.register(stripeWebhookRoutes);
   await app.register(telegramPlugin);
 
   app.setErrorHandler((err, request, reply) => {

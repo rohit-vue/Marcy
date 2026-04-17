@@ -89,6 +89,30 @@ ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.important_memory DISABLE ROW LEVEL SECURITY;
 
+-- Stripe event idempotency table
+CREATE TABLE IF NOT EXISTS public.stripe_events (
+  id text PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.stripe_events DISABLE ROW LEVEL SECURITY;
+
+-- Atomic credit addition (prevents negative and returns new balance)
+CREATE OR REPLACE FUNCTION public.add_user_credits(p_user_id uuid, p_amount integer)
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  new_bal integer;
+BEGIN
+  UPDATE public.users
+  SET credits = credits + p_amount
+  WHERE id = p_user_id
+  RETURNING credits INTO new_bal;
+  RETURN new_bal;
+END;
+$$;
+
 -- Storage bucket for selfie images
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('selfies', 'selfies', true)

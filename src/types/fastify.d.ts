@@ -16,6 +16,9 @@ declare module "fastify" {
       REFERENCE_IMAGE_URL: string;
       WEBHOOK_URL?: string;
       REDIS_URL?: string;
+      STRIPE_SECRET_KEY?: string;
+      STRIPE_WEBHOOK_SECRET?: string;
+      BOT_USERNAME?: string;
     };
     supabase: TypedSupabaseClient;
     telegraf: Telegraf;
