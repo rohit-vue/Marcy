@@ -126,15 +126,18 @@ async function sendPaywall(
   telegramId: string,
   appBaseUrl: string,
 ): Promise<void> {
-  const buyPageUrl = `${appBaseUrl.replace(/\/+$/, "")}/buy?tid=${telegramId}`;
+  const canUseUrlButton = appBaseUrl.startsWith("https://");
+  const rows: Array<Array<{ text: string; url: string } | { text: string; callback_data: string }>> = [];
+
+  if (canUseUrlButton) {
+    const buyPageUrl = `${appBaseUrl.replace(/\/+$/, "")}/buy?tid=${telegramId}`;
+    rows.push([{ text: "💖 Stay With Me", url: buyPageUrl }]);
+  }
+
+  rows.push([{ text: "Maybe later…", callback_data: "paywall_dismiss" }]);
 
   await bot.telegram.sendMessage(chatId, text, {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "💖 Stay With Me", url: buyPageUrl }],
-        [{ text: "Maybe later…", callback_data: "paywall_dismiss" }],
-      ],
-    },
+    reply_markup: { inline_keyboard: rows },
   });
 }
 

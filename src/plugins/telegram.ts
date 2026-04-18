@@ -7,6 +7,7 @@ import { createQueueService } from "../modules/queue/queue.service.js";
 import type { MessageJobPayload } from "../modules/queue/types.js";
 import { registerTelegramBotHandlers } from "../modules/telegram/controller.js";
 import { createTelegramConversationService } from "../modules/telegram/service.js";
+import { resolvePublicAppBaseUrl } from "../utils/public-origin.js";
 
 export const telegramPlugin: FastifyPluginAsync = fp(
   async (app) => {
@@ -19,7 +20,21 @@ export const telegramPlugin: FastifyPluginAsync = fp(
       referenceImageUrl: app.config.REFERENCE_IMAGE_URL,
     });
 
-    const appBaseUrl = app.config.WEBHOOK_URL ?? `http://localhost:${app.config.PORT}`;
+    const appBaseUrl = resolvePublicAppBaseUrl({
+      port: app.config.PORT,
+      ...(app.config.WEBHOOK_URL ? { webhookUrl: app.config.WEBHOOK_URL } : {}),
+      ...(app.config.PUBLIC_APP_URL ? { publicAppUrl: app.config.PUBLIC_APP_URL } : {}),
+      ...(app.config.RENDER_EXTERNAL_URL ? { renderExternalUrl: app.config.RENDER_EXTERNAL_URL } : {}),
+    });
+
+    app.log.info({ appBaseUrl: appBaseUrl.replace(/\/+$/, "") }, "public_app_url.resolved");
+
+    if (app.config.NODE_ENV === "production" && !appBaseUrl.startsWith("https://")) {
+      app.log.warn(
+        {},
+        "public_app_url.no_https: Telegram requires HTTPS for inline URL buttons. Set WEBHOOK_URL, PUBLIC_APP_URL, or rely on Render's RENDER_EXTERNAL_URL.",
+      );
+    }
 
     const processor = createMessageProcessor({
       bot,

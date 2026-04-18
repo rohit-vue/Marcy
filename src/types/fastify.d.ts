@@ -15,6 +15,8 @@ declare module "fastify" {
       OPENAI_API_KEY: string;
       REFERENCE_IMAGE_URL: string;
       WEBHOOK_URL?: string;
+      PUBLIC_APP_URL?: string;
+      RENDER_EXTERNAL_URL?: string;
       REDIS_URL?: string;
       STRIPE_SECRET_KEY?: string;
       STRIPE_WEBHOOK_SECRET?: string;
