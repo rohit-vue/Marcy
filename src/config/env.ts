@@ -39,6 +39,14 @@ export const envSchema = {
     WEBHOOK_URL: {
       type: "string",
     },
+    /** Public HTTPS origin for /buy (optional if RENDER_EXTERNAL_URL is set on Render). */
+    PUBLIC_APP_URL: {
+      type: "string",
+    },
+    /** Set automatically on Render Web Services. */
+    RENDER_EXTERNAL_URL: {
+      type: "string",
+    },
     REDIS_URL: {
       type: "string",
     },
