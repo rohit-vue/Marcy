@@ -32,6 +32,9 @@ export const envSchema = {
     OPENAI_API_KEY: {
       type: "string",
     },
+    OPENROUTER_API_KEY: {
+      type: "string",
+    },
     REFERENCE_IMAGE_URL: {
       type: "string",
       default: "https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png",

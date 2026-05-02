@@ -11,14 +11,16 @@ export type AIIntentResult = {
 
 export type IntentAIService = ReturnType<typeof createIntentAIService>;
 
-export function createIntentAIService(log: FastifyBaseLogger, openAiApiKey: string) {
-  const client = new OpenAI({ apiKey: openAiApiKey });
+export function createIntentAIService(log: FastifyBaseLogger, openRouterApiKey: string) {
+  const client = new OpenAI({ 
+    apiKey: openRouterApiKey,
+    baseURL: "https://openrouter.ai/api/v1",});
 
   return {
     async detectIntentAI(text: string): Promise<AIIntentResult> {
       try {
         const completion = await client.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "mistralai/mistral-nemo",
           temperature: 0,
           max_tokens: 50,
           messages: [

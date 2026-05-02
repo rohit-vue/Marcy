@@ -27,6 +27,7 @@ export function createTelegramConversationService(deps: {
   supabase: TypedSupabaseClient;
   log: FastifyBaseLogger;
   openAiApiKey: string;
+  openRouterApiKey: string;
   referenceImageUrl?: string;
 }) {
   const lastIntentByUser = new Map<string, "chat" | "image">();
@@ -37,8 +38,8 @@ export function createTelegramConversationService(deps: {
   const user = createUserService(deps.supabase, deps.log);
   const payments = createPaymentsService(deps.supabase, deps.log);
   const memory = createMemoryService(deps.supabase, deps.log);
-  const ai = createAiService(deps.log, deps.openAiApiKey);
-  const intentAI = createIntentAIService(deps.log, deps.openAiApiKey);
+  const ai = createAiService(deps.log, deps.openRouterApiKey);
+  const intentAI = createIntentAIService(deps.log, deps.openRouterApiKey);
   const image = createImageService({
     openAiApiKey: deps.openAiApiKey,
     supabase: deps.supabase,

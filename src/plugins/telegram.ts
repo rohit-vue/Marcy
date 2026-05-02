@@ -17,6 +17,7 @@ export const telegramPlugin: FastifyPluginAsync = fp(
       supabase: app.supabase,
       log: app.log,
       openAiApiKey: app.config.OPENAI_API_KEY,
+      openRouterApiKey: app.config.OPENROUTER_API_KEY,
       referenceImageUrl: app.config.REFERENCE_IMAGE_URL,
     });
 
