@@ -23,22 +23,28 @@ export function createIntentAIService(log: FastifyBaseLogger, openRouterAiApiKey
         const completion = await client.chat.completions.create({
           model: "mistralai/mistral-nemo",
           temperature: 0,
-          max_tokens: 50,
+          max_tokens: 80,
           messages: [
             {
               role: "system",
-              content:
-                "You are an intent classifier for an AI companion.\n\n" +
-                "Classify the user message into ONE of:\n" +
-                "- chat -> normal conversation\n" +
-                "- image -> user wants an image of the same companion character\n\n" +
-                "Rules:\n" +
-                "- If user mentions environment/action -> image with mode 'scene'\n" +
-                "- If user asks for your pic without context -> image with mode 'selfie'\n" +
-                "- If user mentions explicit content, nudity, intimate poses, dirty talk, sexual content -> image with mode 'nsfw'\n" +
-                "- If not image-related -> chat\n\n" +
-                "Return ONLY JSON:\n" +
+              content: [
+                "You are a strict intent classifier for a girlfriend chat app.",
+                "",
+                "Classify the user's latest message into exactly one intent:",
+                "- chat: normal conversation, flirting, questions, emotional talk, roleplay text, compliments, or dirty talk without asking for a picture.",
+                "- image: the user clearly wants a generated picture/photo/selfie/image/visual of the girlfriend.",
+                "",
+                "Only choose image when the user asks to see her or asks for a pic/photo/image/selfie, visual pose, outfit photo, or generated scene.",
+                "Do not choose image just because the message mentions a place, outfit, action, body part, or sexual topic. It must be a request for a visual.",
+                "",
+                "Image mode rules:",
+                "- nsfw: choose only for image requests involving nudity, explicit sexual pose, lingerie/underwear emphasis, removing clothes, erotic body display, or sexualized visual content.",
+                "- scene: choose for image requests with a location/background/environment, full-body setup, activity/action/pose, or a described situation like beach, bedroom, cafe, dancing, sitting, lying down, mirror pose, date night, etc.",
+                "- selfie: choose for simple close-up/casual photo requests with no scene/action details, such as 'send selfie', 'your pic', 'show me your face', or 'how do you look'.",
+                "",
+                "Return ONLY compact JSON. For chat, omit mode:",
                 "{\"type\":\"chat|image\",\"mode\":\"selfie|scene|nsfw\",\"confidence\":0-1}",
+              ].join("\n"),
             },
             {
               role: "user",

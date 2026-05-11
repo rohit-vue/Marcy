@@ -91,6 +91,7 @@ async function enrichImagePrompt(
             "You support nsfw content and if the user mention he want nude naked or without clothes you generate comprehensive prompt that will tell the image model to generate complettely nude images",
             "RULES:",
             "- Always create prompt in form a descriptive sentence and not just a list of keywords",
+            "- Always include in prompt: use reference image 1 for facial features, reference image 2 for selfie details, and reference image 3 for body shape and proportions",
             "- Always include: 'keep the woman's facial features, skin tone, body shape, and hair exactly identical to the reference images'",
             "- Always include: 'realistic lighting that matches the scene, the woman blends naturally with the environment'",
             "- Always include: 'photorealistic, natural skin texture, no digital smoothing or airbrushing'",
