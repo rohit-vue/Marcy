@@ -13,12 +13,40 @@ export const telegramPlugin: FastifyPluginAsync = fp(
   async (app) => {
     const bot = new Telegraf(app.config.TELEGRAM_BOT_TOKEN);
 
+    bot.catch((err, ctx) => {
+      if (isBlockedByUserError(err)) {
+        app.log.warn(
+          {
+            err,
+            updateId: ctx.update.update_id,
+            telegramUserId: ctx.from?.id,
+            chatId: ctx.chat?.id,
+          },
+          "telegram.bot.blocked_by_user",
+        );
+        return;
+      }
+
+      app.log.error(
+        {
+          err,
+          updateId: ctx.update.update_id,
+          telegramUserId: ctx.from?.id,
+          chatId: ctx.chat?.id,
+        },
+        "telegram.bot.update_failed",
+      );
+    });
+
     const conversation = createTelegramConversationService({
       supabase: app.supabase,
       log: app.log,
       openAiApiKey: app.config.OPENAI_API_KEY,
-      openRouterApiKey: app.config.OPENROUTER_API_KEY,
-      referenceImageUrl: app.config.REFERENCE_IMAGE_URL,
+      openRouterAiApiKey: app.config.OPENROUTER_API_KEY,
+      segmindApiKey: app.config.SEGMIND_API_KEY,
+      referenceImage1Url: app.config.REFERENCE_IMAGE1_URL,
+      referenceImage2Url: app.config.REFERENCE_IMAGE2_URL,
+      referenceImage3Url: app.config.REFERENCE_IMAGE3_URL,
     });
 
     const appBaseUrl = resolvePublicAppBaseUrl({
@@ -117,3 +145,19 @@ export const telegramPlugin: FastifyPluginAsync = fp(
     dependencies: ["supabase"],
   },
 );
+
+function isBlockedByUserError(err: unknown): boolean {
+  if (!err || typeof err !== "object") {
+    return false;
+  }
+
+  const response = "response" in err ? err.response : undefined;
+  if (!response || typeof response !== "object") {
+    return false;
+  }
+
+  const errorCode = "error_code" in response ? response.error_code : undefined;
+  const description = "description" in response ? response.description : undefined;
+
+  return errorCode === 403 && typeof description === "string" && description.includes("bot was blocked by the user");
+}

@@ -27,8 +27,12 @@ export function createTelegramConversationService(deps: {
   supabase: TypedSupabaseClient;
   log: FastifyBaseLogger;
   openAiApiKey: string;
-  openRouterApiKey: string;
-  referenceImageUrl?: string;
+  openRouterAiApiKey: string;
+  segmindApiKey: string;
+  referenceImage1Url?: string;
+  referenceImage2Url?: string;
+  referenceImage3Url?: string;
+  referenceImage4Url?: string;
 }) {
   const lastIntentByUser = new Map<string, "chat" | "image">();
   const selfieContextStateByUser = new Map<string, SelfieContextState>();
@@ -38,13 +42,17 @@ export function createTelegramConversationService(deps: {
   const user = createUserService(deps.supabase, deps.log);
   const payments = createPaymentsService(deps.supabase, deps.log);
   const memory = createMemoryService(deps.supabase, deps.log);
-  const ai = createAiService(deps.log, deps.openRouterApiKey);
-  const intentAI = createIntentAIService(deps.log, deps.openRouterApiKey);
+  const ai = createAiService(deps.log, deps.openAiApiKey);
+  const intentAI = createIntentAIService(deps.log, deps.openAiApiKey);
   const image = createImageService({
-    openAiApiKey: deps.openAiApiKey,
+    segmindApiKey: deps.segmindApiKey,
+    openRouterAiApiKey: deps.openRouterAiApiKey,
     supabase: deps.supabase,
     log: deps.log,
-    ...(deps.referenceImageUrl ? { referenceImageUrl: deps.referenceImageUrl } : {}),
+    ...(deps.referenceImage1Url ? { referenceImage1Url: deps.referenceImage1Url } : {}),
+    ...(deps.referenceImage2Url ? { referenceImage2Url: deps.referenceImage2Url } : {}),
+    ...(deps.referenceImage3Url ? { referenceImage3Url: deps.referenceImage3Url } : {}),
+    ...(deps.referenceImage4Url ? { referenceImage4Url: deps.referenceImage4Url } : {}),
   });
   function buildPaywallText(): string {
     return "I'd love to keep going with you…\nDon't disappear on me like this 😔\n\nPick a pack to stay with me 💕";
@@ -145,7 +153,7 @@ export function createTelegramConversationService(deps: {
         await input.reply(pickLowCreditNudge());
       };
 
-      const runImageFlow = async (prompt: string, forcedMode?: "selfie" | "scene"): Promise<void> => {
+      const runImageFlow = async (prompt: string, forcedMode?: "selfie" | "scene" | "nsfw" ): Promise<void> => {
         try {
           input.onActionChange?.("upload_photo");
           const mode = forcedMode ?? detectImageMode(prompt);
@@ -155,11 +163,13 @@ export function createTelegramConversationService(deps: {
           });
           await input.reply(preMessage);
 
+          console.time("image_generation");
           const imageOut = await image.generateAndStoreImage({
             userId: dbUser.id,
             userText: prompt,
             mode,
           });
+          console.timeEnd("image_generation");
           await input.replyPhoto(imageOut.publicUrl, imageOut.caption);
 
           const creditsLeft = await deductAfterSuccess();
