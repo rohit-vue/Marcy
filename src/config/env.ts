@@ -29,8 +29,9 @@ export const envSchema = {
     TELEGRAM_BOT_TOKEN: {
       type: "string",
     },
-    OPENROUTER_API_KEY:{
+    OPENROUTER_API_KEY: {
       type: "string",
+      minLength: 1,
     },
     SEGMIND_API_KEY: {
       type: "string",

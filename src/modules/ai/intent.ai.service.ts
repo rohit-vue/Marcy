@@ -13,9 +13,9 @@ export type IntentAIService = ReturnType<typeof createIntentAIService>;
 
 export function createIntentAIService(log: FastifyBaseLogger, openRouterAiApiKey: string) {
   const client = new OpenAI({
-  apiKey: openRouterAiApiKey,
-  baseURL: "https://openrouter.ai/api/v1",
-});
+    apiKey: openRouterAiApiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+  });
 
   return {
     async detectIntentAI(text: string): Promise<AIIntentResult> {
