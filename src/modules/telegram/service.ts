@@ -42,8 +42,8 @@ export function createTelegramConversationService(deps: {
   const user = createUserService(deps.supabase, deps.log);
   const payments = createPaymentsService(deps.supabase, deps.log);
   const memory = createMemoryService(deps.supabase, deps.log);
-  const ai = createAiService(deps.log, deps.openRouterAiApiKey);
-  const intentAI = createIntentAIService(deps.log, deps.openRouterAiApiKey);
+  const ai = createAiService(deps.log, deps.openAiApiKey);
+  const intentAI = createIntentAIService(deps.log, deps.openAiApiKey);
   const image = createImageService({
     segmindApiKey: deps.segmindApiKey,
     openRouterAiApiKey: deps.openRouterAiApiKey,
