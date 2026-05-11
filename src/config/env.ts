@@ -3,7 +3,7 @@
  */
 export const envSchema = {
   type: "object",
-  required: ["SUPABASE_URL", "SUPABASE_ANON_KEY", "OPENROUTER_API_KEY","SEGMIND_API_KEY", "TELEGRAM_BOT_TOKEN", "OPENAI_API_KEY", "REFERENCE_IMAGE1_URL", "REFERENCE_IMAGE2_URL", "REFERENCE_IMAGE3_URL"],
+  required: ["SUPABASE_URL", "SUPABASE_ANON_KEY", "OPENROUTER_API_KEY", "SEGMIND_API_KEY", "TELEGRAM_BOT_TOKEN", "REFERENCE_IMAGE1_URL", "REFERENCE_IMAGE2_URL", "REFERENCE_IMAGE3_URL"],
   properties: {
     PORT: {
       type: "string",
@@ -29,11 +29,9 @@ export const envSchema = {
     TELEGRAM_BOT_TOKEN: {
       type: "string",
     },
-    OPENAI_API_KEY: {
+    OPENROUTER_API_KEY: {
       type: "string",
-    },
-    OPENROUTER_API_KEY:{
-      type: "string",
+      minLength: 1,
     },
     SEGMIND_API_KEY: {
       type: "string",

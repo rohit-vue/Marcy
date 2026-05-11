@@ -17,9 +17,9 @@ export type AiContextMessage = { role: ChatRole; content: string };
 
 export function createAiService(log: FastifyBaseLogger, openRouterAiApiKey: string) {
   const client = new OpenAI({
-  apiKey: openRouterAiApiKey,
-  baseURL: "https://openrouter.ai/api/v1",
-});
+    apiKey: openRouterAiApiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+  });
 
   return {
     async generateImagePreMessage(params: {

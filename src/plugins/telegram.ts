@@ -41,7 +41,6 @@ export const telegramPlugin: FastifyPluginAsync = fp(
     const conversation = createTelegramConversationService({
       supabase: app.supabase,
       log: app.log,
-      openAiApiKey: app.config.OPENAI_API_KEY,
       openRouterAiApiKey: app.config.OPENROUTER_API_KEY,
       segmindApiKey: app.config.SEGMIND_API_KEY,
       referenceImage1Url: app.config.REFERENCE_IMAGE1_URL,
