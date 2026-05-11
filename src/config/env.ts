@@ -3,7 +3,7 @@
  */
 export const envSchema = {
   type: "object",
-  required: ["SUPABASE_URL", "SUPABASE_ANON_KEY", "TELEGRAM_BOT_TOKEN", "OPENAI_API_KEY", "REFERENCE_IMAGE_URL"],
+  required: ["SUPABASE_URL", "SUPABASE_ANON_KEY", "OPENROUTER_API_KEY","SEGMIND_API_KEY", "TELEGRAM_BOT_TOKEN", "OPENAI_API_KEY", "REFERENCE_IMAGE1_URL", "REFERENCE_IMAGE2_URL", "REFERENCE_IMAGE3_URL"],
   properties: {
     PORT: {
       type: "string",
@@ -32,7 +32,21 @@ export const envSchema = {
     OPENAI_API_KEY: {
       type: "string",
     },
-    REFERENCE_IMAGE_URL: {
+    OPENROUTER_API_KEY:{
+      type: "string",
+    },
+    SEGMIND_API_KEY: {
+      type: "string",
+    },
+    REFERENCE_IMAGE1_URL: {
+      type: "string",
+      default: "https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png",
+    },
+    REFERENCE_IMAGE2_URL: {
+      type: "string",
+      default: "https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png",
+    },
+    REFERENCE_IMAGE3_URL: {
       type: "string",
       default: "https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png",
     },

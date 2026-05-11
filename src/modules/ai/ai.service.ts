@@ -15,17 +15,20 @@ type MessageForModel = {
 export type AiService = ReturnType<typeof createAiService>;
 export type AiContextMessage = { role: ChatRole; content: string };
 
-export function createAiService(log: FastifyBaseLogger, openAiApiKey: string) {
-  const client = new OpenAI({ apiKey: openAiApiKey });
+export function createAiService(log: FastifyBaseLogger, openRouterAiApiKey: string) {
+  const client = new OpenAI({
+  apiKey: openRouterAiApiKey,
+  baseURL: "https://openrouter.ai/api/v1",
+});
 
   return {
     async generateImagePreMessage(params: {
       userMessage: string;
-      mode: "selfie" | "scene";
+      mode: "selfie" | "scene" | "nsfw";
     }): Promise<string> {
       try {
         const completion = await client.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "mistralai/mistral-nemo",
           temperature: 0.7,
           max_tokens: 28,
           messages: [
@@ -64,7 +67,7 @@ export function createAiService(log: FastifyBaseLogger, openAiApiKey: string) {
 
       try {
         const completion = await client.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "mistralai/mistral-nemo",
           temperature: 0.8,
           messages,
         });

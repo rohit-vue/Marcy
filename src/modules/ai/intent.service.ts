@@ -4,7 +4,7 @@ export type UserIntent = {
   type: "image" | "chat";
 };
 
-export type ImageMode = "selfie" | "scene";
+export type ImageMode = "selfie" | "scene" | "nsfw";
 
 const IMAGE_REQUEST_PATTERNS: RegExp[] = [
   /\bsend\s+(me\s+)?(a\s+)?(pic|picture|image|photo|selfie)\b/i,

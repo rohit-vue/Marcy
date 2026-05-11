@@ -13,7 +13,11 @@ declare module "fastify" {
       SUPABASE_SERVICE_ROLE_KEY?: string;
       TELEGRAM_BOT_TOKEN: string;
       OPENAI_API_KEY: string;
-      REFERENCE_IMAGE_URL: string;
+      OPENROUTER_API_KEY: string;
+      SEGMIND_API_KEY: string;
+      REFERENCE_IMAGE1_URL: string;
+      REFERENCE_IMAGE2_URL: string;
+      REFERENCE_IMAGE3_URL: string;
       WEBHOOK_URL?: string;
       PUBLIC_APP_URL?: string;
       RENDER_EXTERNAL_URL?: string;
