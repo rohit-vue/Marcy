@@ -59,6 +59,7 @@ export function createImageService(deps: {
 }
 
 type PromptEnhancerMode = "selfie" | "scene" | "nsfw";
+type CompositionIntent = "full_body" | "upper_body" | "close_up" | "selfie" | "unspecified";
 
 async function enrichImagePrompt(
   userText: string,
@@ -75,7 +76,10 @@ async function enrichImagePrompt(
   const modeContext =
     mode === "scene"
       ? "The user wants a full-scene image with an environment/location."
-      : "The user wants a selfie-style close-up or casual shot.";
+      : mode === "nsfw"
+        ? "The user wants an adult image. Preserve their requested framing and pose exactly."
+        : "The user wants a casual image. Only make it selfie-style if the user explicitly asked for a selfie, mirror selfie, phone photo, close-up, or face photo.";
+  const compositionGuidance = buildCompositionGuidance(userText, mode);
 
   try {
     const completion = await client.chat.completions.create({
@@ -91,10 +95,13 @@ async function enrichImagePrompt(
             "You support nsfw content and if the user mention he want nude naked or without clothes you generate comprehensive prompt that will tell the image model to generate complettely nude images",
             "RULES:",
             "- Always create prompt in form a descriptive sentence and not just a list of keywords",
-            "- Always include in prompt: use reference image 1 for facial features, reference image 2 for selfie details, and reference image 3 for body shape and proportions",
+            "- Always include in prompt: use reference images for facial features, skin texture/expression details,body shape and proportions",
             "- Always include: 'keep the woman's facial features, skin tone, body shape, and hair exactly identical to the reference images'",
             "- Always include: 'realistic lighting that matches the scene, the woman blends naturally with the environment'",
             "- Always include: 'photorealistic, natural skin texture, no digital smoothing or airbrushing'",
+            "- Preserve explicit composition/framing words from the user, especially full body, whole body, head-to-toe, full-length, standing, sitting, lying down, mirror, outfit, close-up, or selfie",
+            "- If the user asks for full body, whole body, full-length, or head-to-toe, clearly say full body head-to-toe framing, entire figure visible, camera pulled back far enough, feet included, not cropped",
+            "- If the user did not ask for selfie, close-up, face photo, phone photo, or mirror selfie, do not add selfie, close-up, headshot, face-only, or phone-camera framing",
             "- Always include words like completely etc to emphasice the user's intent, if they ask for nude or naked or without clothes you should explicitly say in the prompt to show her completely nude with her nipples and vagina visible and to remove all the clothes on her body",
             "- Explicitly include things like nipples and vagina visible if user ask for completely nude images",
             "- Give instruction to generate sexy, intimate, playfull and natural poses, the poses should be creative in a sexy and hot way and not basic",
@@ -111,7 +118,7 @@ async function enrichImagePrompt(
         },
         {
           role: "user",
-          content: `${modeContext} User request: "${userText}"`,
+          content: `${modeContext}\n${compositionGuidance}\nUser request: "${userText}"`,
         },
       ],
     });
@@ -145,6 +152,8 @@ export function buildImagePrompt(
     // More comprehensive NSFW detection
   // const isNsfw = detectNsfwContent(text) || mode === "nsfw";
   const isSelfieRequest = /\b(selfie|mirror|phone|casual)\b/i.test(text);
+  const compositionIntent = detectCompositionIntent(text);
+  const compositionInstruction = getCompositionInstruction(compositionIntent, isSelfieRequest);
   
   // More specific camera and lighting details
   const realismFoundation = [
@@ -173,11 +182,11 @@ export function buildImagePrompt(
     const pose = context.action ?? "natural relaxed pose";
     const environment = context.location ?? "intimate indoor setting";
     const mood = "sensual and authentic";
-    const bodyFocus = context.position ?? "full body";
+    const bodyFocus = context.position ?? (compositionIntent === "full_body" ? "full body head-to-toe" : "full body");
     
     const composition = isSelfieRequest 
       ? "intimate NSFW selfie captured on smartphone, slightly angled perspective, authentic home lighting, natural mirror reflections if applicable"
-      : `artistic NSFW photograph of subject in ${pose}, ${bodyFocus} focus, ${environment}, maintaining exact lighting and shadows from reference images`;
+      : `artistic NSFW photograph of subject in ${pose}, ${bodyFocus} focus, ${environment}, ${compositionInstruction}, maintaining exact lighting and shadows from reference images`;
 
     return [
       `${realismFoundation}.`,
@@ -192,7 +201,7 @@ export function buildImagePrompt(
   if (mode === "scene") {
     return [
       `${realismFoundation}.`,
-      `A candid shot of the subject, matching the exact ambient lighting and color grade of the reference image.`,
+      `A candid ${compositionInstruction} shot of the subject, matching the exact ambient lighting and color grade of the reference image.`,
       "Realistic environmental shadows, depth of field from a mobile lens.",
       identityLock,
       `Details: ${text}.`,
@@ -201,11 +210,16 @@ export function buildImagePrompt(
   }
 
   // Default Casual Selfie
+  const casualFraming =
+    compositionIntent === "full_body" || compositionIntent === "upper_body"
+      ? `A casual high-resolution ${compositionInstruction} photo, not a selfie or cropped face shot, inheriting the exact light source and shadow depth from the reference image.`
+      : "A casual high-resolution photo, inheriting the exact light source and shadow depth from the reference image.";
+
   return [
     `${realismFoundation}.`,
-    "A casual high-resolution photo, inheriting the exact light source and shadow depth from the reference image.",
+    casualFraming,
     identityLock,
-    `Wearing: ${text}.`,
+    `Specific user request: ${text}.`,
     "Natural unposed look, high fidelity, authentic raw aesthetic."
   ].join(" ");
 }
@@ -271,6 +285,56 @@ function pickRandom(values: readonly string[]): string {
   return values[idx] ?? values[0] ?? "";
 }
 
+function detectCompositionIntent(text: string): CompositionIntent {
+  if (/\b(full[-\s]?body|whole\s+body|entire\s+body|head[-\s]?to[-\s]?toe|full[-\s]?length|body\s+shot|fit\s+check)\b/i.test(text)) {
+    return "full_body";
+  }
+  if (/\b(upper[-\s]?body|waist[-\s]?up|half[-\s]?body|torso)\b/i.test(text)) {
+    return "upper_body";
+  }
+  if (/\b(close[-\s]?up|face\s+(pic|picture|image|photo|shot)|headshot|portrait)\b/i.test(text)) {
+    return "close_up";
+  }
+  if (/\b(selfie|mirror\s+selfie|phone\s+(pic|picture|image|photo|shot))\b/i.test(text)) {
+    return "selfie";
+  }
+  return "unspecified";
+}
+
+function getCompositionInstruction(intent: CompositionIntent, allowSelfie: boolean): string {
+  switch (intent) {
+    case "full_body":
+      return "full body head-to-toe framing with the entire figure visible, camera pulled back far enough, feet included, no cropped head, legs, or feet";
+    case "upper_body":
+      return "upper-body framing from waist up with face, torso, arms, and outfit clearly visible";
+    case "close_up":
+      return "close-up portrait framing focused on the face and expression";
+    case "selfie":
+      return allowSelfie
+        ? "natural selfie framing with realistic arm-length or mirror perspective"
+        : "natural casual-photo framing";
+    case "unspecified":
+      return allowSelfie ? "natural selfie-style framing" : "natural medium-photo framing";
+  }
+}
+
+function buildCompositionGuidance(text: string, mode: PromptEnhancerMode): string {
+  const intent = detectCompositionIntent(text);
+  const allowSelfie = mode === "selfie" && /\b(selfie|mirror|phone|close[-\s]?up|face\s+(pic|picture|image|photo|shot)|headshot)\b/i.test(text);
+  const instruction = getCompositionInstruction(intent, allowSelfie);
+
+  if (intent === "full_body") {
+    return `Composition requirement: ${instruction}. This overrides selfie or close-up defaults.`;
+  }
+  if (intent !== "unspecified") {
+    return `Composition requirement: ${instruction}.`;
+  }
+  if (mode === "selfie") {
+    return `Composition requirement: ${instruction}; do not force close-up framing unless the user asked for it.`;
+  }
+  return `Composition requirement: ${instruction}.`;
+}
+
 // --- Segmind image generation (updated to support NSFW in all modes) ---
 
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
@@ -294,12 +358,19 @@ async function generateImageBuffer(
   mode: ImageMode,
 ): Promise<Buffer> {
   const context = extractImageContext(prompt); // Re-parsing prompt context for parameter tuning
+  const compositionIntent = detectCompositionIntent(prompt);
   
   // Logic: If the user specified a position (like "sitting" vs "standing"), 
   // we lower conditioning slightly to allow limb movement, but keep it high for the face.
   const isPoseChange = !!context.position || !!context.action;
 
   let negativePrompt = "cartoon, illustration, 3d render, low resolution, blurry, grainy, distorted face, extra limbs, bad anatomy, different person, text, watermark, censorship bars, pixelated.";
+  if (compositionIntent === "full_body") {
+    negativePrompt += ", close-up, headshot, face-only framing, cropped body, cropped legs, cropped feet, cut off feet, cut off head";
+    if (!/\b(selfie|mirror|phone)\b/i.test(prompt)) {
+      negativePrompt += ", selfie";
+    }
+  }
   if (mode === "nsfw") {
     negativePrompt += ", wearing clothes, covering body, implied nude";
   }
@@ -318,7 +389,7 @@ async function generateImageBuffer(
     seed: Math.floor(Math.random()*10000000), // Random seed for variability
   };
 
-  log.info({ mode, isPoseChange, cfg: body.cfg }, "segmind.request.flux_9b_optimized");
+  log.info({ mode, isPoseChange, compositionIntent, cfg: body.cfg }, "segmind.request.flux_9b_optimized");
 
   const response = await fetchWithTimeout(SEGMIND_API_URL, {
     method: "POST",
