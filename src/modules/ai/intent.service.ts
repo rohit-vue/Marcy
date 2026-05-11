@@ -63,17 +63,17 @@ const ACTION_PATTERNS: RegExp[] = [
   /\bholding\b/i,
 ];
 
-const FRAMING_PATTERNS: RegExp[] = [
-  /\bfull[-\s]?body\b/i,
-  /\bwhole\s+body\b/i,
-  /\bentire\s+body\b/i,
-  /\bhead[-\s]?to[-\s]?toe\b/i,
-  /\bfull[-\s]?length\b/i,
-  /\bbody\s+shot\b/i,
-  /\bfit\s+check\b/i,
-  /\boutfit\s+(pic|picture|image|photo|shot)\b/i,
-  /\bpose\b/i,
-];
+
+
+
+
+
+
+
+
+
+
+
 
 const NSFW_IMAGE_PATTERNS: RegExp[] = [
   /\bnude\b/i,
@@ -176,8 +176,8 @@ export function hasImageContextHint(text: string): boolean {
   return (
     hasSelfieContextHint(normalized) ||
     ENVIRONMENT_PATTERNS.some((pattern) => pattern.test(normalized)) ||
-    ACTION_PATTERNS.some((pattern) => pattern.test(normalized)) ||
-    FRAMING_PATTERNS.some((pattern) => pattern.test(normalized))
+    ACTION_PATTERNS.some((pattern) => pattern.test(normalized))
+
   );
 }
 
@@ -186,13 +186,13 @@ export function detectImageMode(text: string): ImageMode {
   const hasNsfw = NSFW_IMAGE_PATTERNS.some((pattern) => pattern.test(normalized));
   const hasEnvironment = ENVIRONMENT_PATTERNS.some((pattern) => pattern.test(normalized));
   const hasAction = ACTION_PATTERNS.some((pattern) => pattern.test(normalized));
-  const hasFraming = FRAMING_PATTERNS.some((pattern) => pattern.test(normalized));
+
 
   if (hasNsfw) {
     return "nsfw";
   }
 
-  if (hasEnvironment || hasAction || hasFraming) {
+  if (hasEnvironment || hasAction) {
     return "scene";
   }
   return "selfie";
