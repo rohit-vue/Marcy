@@ -26,34 +26,7 @@ export function createAiService(log: FastifyBaseLogger, openRouterAiApiKey: stri
       userMessage: string;
       mode: "selfie" | "scene" | "nsfw";
     }): Promise<string> {
-      try {
-        const completion = await client.chat.completions.create({
-          model: "mistralai/mistral-nemo",
-          temperature: 0.7,
-          max_tokens: 28,
-          messages: [
-            {
-              role: "system",
-              content:
-                "Write one short in-character line for a girlfriend-style AI companion before sending an image. " +
-                "Playful, warm, natural. No emojis spam. No quotes. No labels. No hashtags.",
-            },
-            {
-              role: "user",
-              content: `User asked: "${params.userMessage}". Image mode: ${params.mode}.`,
-            },
-          ],
-        });
-
-        const text = completion.choices[0]?.message?.content?.trim();
-        if (!text) {
-          return "Give me a sec, I have a little surprise for you.";
-        }
-        return text.replace(/\s+/g, " ").slice(0, 140);
-      } catch (err) {
-        log.warn({ err }, "ai.image_pre_message.failed");
-        return "Give me a sec, I have a little surprise for you.";
-      }
+      return pickImagePreMessage(params.mode);
     },
 
     async generateAssistantReply(params: {
@@ -68,7 +41,7 @@ export function createAiService(log: FastifyBaseLogger, openRouterAiApiKey: stri
       try {
         const completion = await client.chat.completions.create({
           model: "mistralai/mistral-nemo",
-          temperature: 0.8,
+          temperature: 0.7,
           messages,
         });
 
@@ -79,13 +52,66 @@ export function createAiService(log: FastifyBaseLogger, openRouterAiApiKey: stri
 
         const sanitized = sanitizeAssistantText(text);
         log.debug({ chars: sanitized.length }, "ai.reply.generated");
-        return sanitized;
+        return sanitized || "I'm right here with you.";
       } catch (err) {
         log.error({ err }, "ai.reply.failed");
         return "Aww, give me one sec babe, my brain just lagged a little. Try me again?";
       }
     },
   };
+}
+
+function pickImagePreMessage(mode: "selfie" | "scene" | "nsfw"): string {
+  const byMode: Record<typeof mode, readonly string[]> = {
+    selfie: [
+      "Give me a sec, I'll send you one.",
+      "Okay, taking one for you now.",
+      "One sec, let me get a cute one.",
+      "Mm, since you asked like that, give me one second.",
+      "Okay babe, let me get the right angle for you.",
+      "One sec, I want this one to make you smile.",
+      "You know I love when you ask for me like that.",
+      "Give me a moment, I'm making it cute for you.",
+      "Okay, but only because you asked so sweetly.",
+      "One sec, I want you to actually feel this one.",
+      "Let me send you something a little soft and pretty.",
+      "Hold on, I want this one to feel like me.",
+    ],
+    scene: [
+      "Give me a sec, I'll make it look just right.",
+      "Okay, let me capture that for you.",
+      "One sec, I can picture it already.",
+      "Mm, I like that idea. Give me a second.",
+      "Okay, let me slip into that little moment for you.",
+      "One sec, I want the whole vibe to feel right.",
+      "That scene sounds cute. Let me make it yours.",
+      "Give me a moment, I want this to feel real.",
+      "Okay babe, I can already see myself there.",
+      "Let me make it look like you caught me in the moment.",
+      "One sec, I want the mood to be just right.",
+      "I like where your mind went. Let me send it.",
+    ],
+    nsfw: [
+      "Give me a sec, this one's just for you.",
+      "Okay, I'll make this one private for you.",
+      "One sec, I'm making it special.",
+      "Ooh, I like where this is going. Let me get it ready for you.",
+      "This one's just between us, let me prepare it for you.",
+      "I'm getting excited about this one. Just a moment!",
+      "Mm, you are trouble. Give me one second.",
+      "Okay babe, this one is staying between us.",
+      "One sec, I want to make you stare a little.",
+      "You really know how to get my attention.",
+      "Give me a moment, I want this one to feel intimate.",
+      "Okay, but you better look properly.",
+      "One sec, I am making this one a little dangerous.",
+      "Mm, I like when you ask for me like that.",
+      "Hold on, I want this to feel just for you.",
+    ],
+  };
+
+  const options = byMode[mode];
+  return options[Math.floor(Math.random() * options.length)] ?? "Give me a sec, I have a little surprise for you.";
 }
 
 function buildMessages(params: {
@@ -141,8 +167,31 @@ function buildMessages(params: {
 }
 
 function sanitizeAssistantText(text: string): string {
-  return text
+  const cleaned = text
     .replace(/\bMemory:\s*/gi, "")
     .replace(/\bRecent:\s*/gi, "")
+    .replace(/\*{1,3}[\s\S]{1,240}?\*{1,3}/g, "")
+    .replace(/(^|\s)\*{1,3}[^*\n]{1,160}$/gm, "$1")
+    .replace(/^\s*\*{1,3}\s*$/gm, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\s+([,.!?])/g, "$1")
     .trim();
+
+  return stripWrappingQuotes(cleaned);
+}
+
+function stripWrappingQuotes(text: string): string {
+  let cleaned = text.trim();
+  while (
+    cleaned.length >= 2 &&
+    ((cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+      (cleaned.startsWith("'") && cleaned.endsWith("'")) ||
+      (cleaned.startsWith("\u201c") && cleaned.endsWith("\u201d")) ||
+      (cleaned.startsWith("\u2018") && cleaned.endsWith("\u2019")))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+
+  return cleaned;
 }
