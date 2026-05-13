@@ -39,13 +39,13 @@ export function createImageService(deps: {
           referenceImage2Url,
           referenceImage3Url,
         );
-        const prompt = await enrichImagePrompt(
+        const prompt = sanitizeImagePrompt(await enrichImagePrompt(
           params.userText,
           params.mode === "scene" ? "scene" : params.mode === "nsfw" ? "nsfw" : "selfie",
           deps.openRouterAiApiKey,
           deps.log,
           fallbackPrompt,
-        );
+        ));
         const imageBuffer = await generateImageBuffer(deps.segmindApiKey, prompt, referenceImage1Url, referenceImage2Url, referenceImage3Url, deps.log, params.mode);
         const publicUrl = await uploadToSupabase(deps.supabase, params.userId, imageBuffer);
         const caption = buildCaption(params.mode);
@@ -59,6 +59,13 @@ export function createImageService(deps: {
 }
 
 type PromptEnhancerMode = "selfie" | "scene" | "nsfw";
+
+const REQUIRED_IMAGE_PROMPT_DETAILS = [
+  "Use natural, realistic lighting, and ensure the woman blends naturally with the environment.",
+  "Maintain photorealistic, natural skin texture, with no digital smoothing or airbrushing.",
+  "Keep the woman's facial features, skin tone, body shape, and hair exactly identical to the reference images.",
+  "Pose should be playful and intimate, capturing a candid, natural moment.",
+];
 
 
 async function enrichImagePrompt(
@@ -76,6 +83,8 @@ async function enrichImagePrompt(
   const modeContext =
     mode === "scene"
       ? "The user wants a full-scene image with an environment/location."
+      : mode === "nsfw"
+        ? "The user wants an NSFW image. Preserve the user's requested framing, such as full body, selfie, close-up, pose, outfit, or scene."
       : "The user wants a selfie-style close-up or casual shot.";
 
 
@@ -85,7 +94,7 @@ async function enrichImagePrompt(
     const completion = await client.chat.completions.create({
       model: "mistralai/mistral-nemo",
       temperature: 0.3,
-      max_tokens: 120,
+      max_tokens: 150,
       messages: [
         {
           role: "system",
@@ -99,6 +108,9 @@ async function enrichImagePrompt(
             "- Always include: 'keep the woman's facial features, skin tone, body shape, and hair exactly identical to the reference images'",
             "- Always include: 'realistic lighting that matches the scene, the woman blends naturally with the environment'",
             "- Always include: 'photorealistic, natural skin texture, no digital smoothing or airbrushing'",
+            "- Write the image prompt in third person for an image model, not as dialogue to the character.",
+            "- Refer to the subject as 'the woman in the reference images', 'the woman', 'she', or 'her'.",
+            "- Never refer to the subject as 'you' or 'your' in the final prompt.",
 
 
 
@@ -108,7 +120,7 @@ async function enrichImagePrompt(
             "- Always keep in mind the user is talking to their AI girlfriend, so the tone will be playfull and flirty, dont take words like baby bitch in literal sense",
             "- Expand the user's request with natural scene details (lighting, atmosphere, framing) change the outfit, location, or pose with what user asked for",
             "- Do not add people, animals, or objects the user did not mention",
-            "- Output only the final prompt, with no quotes, explanations, or labels",
+            "- Output only the final prompt, with no wrapping quotes, explanations, or labels",
             "- Keep it under 100 words",
             "- If the user request is vague, add plausible details to create a richer prompt, but do not contradict the user's original intent",
             "- If the user request is very detailed, try to use their exact wording as much as possible while ensuring the prompt is clear and descriptive for image generation",
@@ -126,15 +138,81 @@ async function enrichImagePrompt(
     const enriched = completion.choices[0]?.message?.content?.trim();
     if (!enriched) {
       log.warn("enrich_prompt.empty_response");
-      return fallbackPrompt;
+      return sanitizeImagePrompt(fallbackPrompt);
     }
 
-    log.info({ mode, chars: enriched.length }, "enrich_prompt.generated");
-    return enriched;
+    const sanitized = sanitizeImagePrompt(enriched);
+    log.info({ mode, chars: sanitized.length }, "enrich_prompt.generated");
+    return sanitized;
   } catch (err) {
     log.warn({ err }, "enrich_prompt.failed");
-    return fallbackPrompt;
+    return sanitizeImagePrompt(fallbackPrompt);
   }
+}
+
+function sanitizeImagePrompt(prompt: string): string {
+  return appendRequiredImagePromptDetails(rewriteSubjectToThirdPerson(stripWrappingPromptQuotes(prompt)))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function appendRequiredImagePromptDetails(prompt: string): string {
+  const lower = prompt.toLowerCase();
+  const missingDetails = REQUIRED_IMAGE_PROMPT_DETAILS.filter((detail) => {
+    const detailLower = detail.toLowerCase();
+    if (detailLower.includes("lighting")) {
+      return !lower.includes("realistic lighting") && !lower.includes("natural lighting");
+    }
+    if (detailLower.includes("photorealistic")) {
+      return !lower.includes("photorealistic") || !lower.includes("natural skin texture");
+    }
+    if (detailLower.includes("facial features")) {
+      return !lower.includes("facial features") || !lower.includes("reference images");
+    }
+    if (detailLower.includes("pose")) {
+      return !lower.includes("playful") || !lower.includes("candid");
+    }
+    return !lower.includes(detailLower);
+  });
+
+  if (missingDetails.length === 0) {
+    return prompt;
+  }
+
+  return `${prompt.replace(/[.。]\s*$/, "")}. ${missingDetails.join(" ")}`;
+}
+
+function stripWrappingPromptQuotes(prompt: string): string {
+  let cleaned = prompt.trim();
+
+  while (
+    cleaned.length >= 4 &&
+    ((cleaned.startsWith('\\"') && cleaned.endsWith('\\"')) ||
+      (cleaned.startsWith("\\'") && cleaned.endsWith("\\'")))
+  ) {
+    cleaned = cleaned.slice(2, -2).trim();
+  }
+
+  while (
+    cleaned.length >= 2 &&
+    ((cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+      (cleaned.startsWith("'") && cleaned.endsWith("'")) ||
+      (cleaned.startsWith("\u201c") && cleaned.endsWith("\u201d")) ||
+      (cleaned.startsWith("\u2018") && cleaned.endsWith("\u2019")))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+
+  return cleaned;
+}
+
+function rewriteSubjectToThirdPerson(prompt: string): string {
+  return prompt
+    .replace(/\bof you\b/gi, "of the woman in the reference images")
+    .replace(/\byou are\b/gi, "the woman in the reference images is")
+    .replace(/\byou\b/gi, "the woman in the reference images")
+    .replace(/\byourself\b/gi, "herself")
+    .replace(/\byour\b/gi, "her");
 }
 
 // --- Prompt building (updated to support NSFW in all modes) ---
@@ -211,10 +289,6 @@ export function buildImagePrompt(
 
   // Default Casual Selfie
 
-
-
-
-
   return [
     `${realismFoundation}.`,
     "A casual high-resolution photo, inheriting the exact light source and shadow depth from the reference image.",
@@ -285,56 +359,6 @@ function pickRandom(values: readonly string[]): string {
   return values[idx] ?? values[0] ?? "";
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // --- Segmind image generation (updated to support NSFW in all modes) ---
 
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
@@ -357,20 +381,7 @@ async function generateImageBuffer(
   log: FastifyBaseLogger,
   mode: ImageMode,
 ): Promise<Buffer> {
-  const context = extractImageContext(prompt); // Re-parsing prompt context for parameter tuning
-
-
-  // Logic: If the user specified a position (like "sitting" vs "standing"), 
-  // we lower conditioning slightly to allow limb movement, but keep it high for the face.
-  const isPoseChange = !!context.position || !!context.action;
-
   let negativePrompt = "cartoon, illustration, 3d render, low resolution, blurry, grainy, distorted face, extra limbs, bad anatomy, different person, text, watermark, censorship bars, pixelated.";
-
-
-
-
-
-
   if (mode === "nsfw") {
     negativePrompt += ", wearing clothes, covering body, implied nude";
   }
@@ -379,7 +390,7 @@ async function generateImageBuffer(
     image_urls: [referenceImage1Url, referenceImage2Url, referenceImage3Url],
     negative_prompt: negativePrompt,
     // 9B Production Presets
-    cfg: 8, 
+    cfg: 10, 
     steps: 20,
     sampler: "res_2s",
     aspect_ratio: "2:3",
@@ -389,7 +400,7 @@ async function generateImageBuffer(
     seed: Math.floor(Math.random()*10000000), // Random seed for variability
   };
 
-  log.info({ mode, isPoseChange, cfg: body.cfg }, "segmind.request.flux_9b_optimized");
+  log.info({ mode, cfg: body.cfg }, "segmind.request.flux_9b_optimized");
 
   const response = await fetchWithTimeout(SEGMIND_API_URL, {
     method: "POST",
